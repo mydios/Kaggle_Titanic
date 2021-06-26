@@ -6,7 +6,7 @@ from preprocessing import preprocess
 from sklearn.tree import DecisionTreeClassifier
 
 def train_model(X, Y):
-    dt = DecisionTreeClassifier(max_depth=5)
+    dt = DecisionTreeClassifier(max_depth=8)
     dt.fit(X, Y)
     return dt
 

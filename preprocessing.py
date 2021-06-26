@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 import math
 
-from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+
+from joblib import load
 
 def preprocess(df, dt=None, mean_fare=None):
     drop = []
@@ -33,43 +35,59 @@ def preprocess(df, dt=None, mean_fare=None):
             return e
     df['Embarked'] = df['Embarked'].apply(fix_embarked)
 
+
+    #Create feature about title
+    df['Title'] = df['Name']
+    def title_mapper(s):
+        if ('Dr.' in s) or ('Master.' in s) or ('Miss.' in s) or ('Mr.' in s) or ('Mrs.' in s) or ('Rev.' in s):
+            return s.split(', ')[1].split(' ')[0]
+        elif ('Lady.' in s) or ('Sir.' in s) or ('Lady.' in s) or ('Dona.' in s) or ('Jonkheer.' in s) or ('Countess' in s):
+            return 'Noble.'
+        elif ('Col.' in s) or ('Major.' in s) or ('Capt.' in s):
+            return 'Military.'
+        elif ('Ms.' in s) or ('Mlle.' in s):
+            return 'Miss.'
+        elif ('Mme.' in s):
+            return 'Mrs.'
+        elif ('Don.' in s):
+            return 'Mr.'
+        else:
+            return 'Mr.'
+    df['Title'] = df['Title'].apply(title_mapper)
+
+    #Create feature about family size
+    df['Family'] = df['Parch'] + df['SibSp']
+
+
     #make categorical columns one-hot
     df['Sex'] = df['Sex'] == 'female'
     df = df.join(pd.get_dummies(df.Embarked, prefix='Embarked'))
     drop.append('Embarked')
     df = df.join(pd.get_dummies(df.Pclass, prefix='Pclass'))
     drop.append('Pclass')
+    df = df.join(pd.get_dummies(df.Title, prefix='Title'))
+    drop.append('Title')
 
 
     df = df.drop(columns=drop)
 
 
     #Fix missing ages by predicting it from other rows
-    if dt is None:
-        dt = DecisionTreeRegressor(max_depth=5)
-        X = df.dropna().drop(columns=['Survived', 'Age']).to_numpy()
-        Y = df['Age'].dropna().to_numpy()
-        dt.fit(X, Y)
-    a = np.zeros(len(df))
-    p = []
-    for i in range(len(a)):
-        age = df['Age'][i]
-        if math.isnan(age):
+    age_predictor = load('age_predictor.joblib')
+
+    for i in range(len(df)):
+        if math.isnan(df['Age'].iloc[i]):
             try:
-                row = df.drop(columns=['Survived', 'Age']).iloc[i].to_numpy().reshape(1,-1)
+                row = df.drop(columns=['Age', 'Survived']).iloc[i].to_numpy()
             except:
-                row = df.drop(columns=['Age']).iloc[i].to_numpy().reshape(1,-1)
-            age = np.sum(dt.predict(row))
-            p.append(age)
-        a[i] = age
-    df['Age'] = a
+                row = df.drop(columns=['Age']).iloc[i].to_numpy()
+            age = np.sum(age_predictor.predict([row]))
+            df.loc[i, 'Age'] = age
 
-    print(p)
-
-    return df, dt, mean_fare
+    return df, mean_fare
 
 
 if __name__ == '__main__':
     df = pd.read_csv('titanic/train.csv')
-    df, dt, mean_fare= preprocess(df)
-    print(df.head(50))
+    df, mean_fare= preprocess(df)
+    print(df['Age'].head(20))
