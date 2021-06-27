@@ -6,7 +6,7 @@ from sklearn.ensemble import RandomForestRegressor
 
 from joblib import load
 
-def preprocess(df, dt=None, mean_fare=None):
+def preprocess_basic(df, mean_fare=None):
     drop = []
 
     #drop columns with majority missing values
@@ -71,6 +71,11 @@ def preprocess(df, dt=None, mean_fare=None):
 
     df = df.drop(columns=drop)
 
+    return df, mean_fare
+
+
+def preprocess(df, mean_fare=None):
+    df, mean_fare = preprocess_basic(df, mean_fare)
 
     #Fix missing ages by predicting it from other rows
     age_predictor = load('age_predictor.joblib')
