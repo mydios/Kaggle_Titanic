@@ -108,7 +108,6 @@ def preprocess_basic(df, mean_fare=None):
 def preprocess(df, mean_fare=None):
     df, mean_fare = preprocess_basic(df, mean_fare)
 
-    """
     #Fix missing ages by predicting it from other rows
     age_predictor = load('age_predictor.joblib')
 
@@ -135,7 +134,7 @@ def preprocess(df, mean_fare=None):
             else:
                 age = m3
             df.loc[i, 'Age'] = age
-
+    """
     return df, mean_fare
 
 
