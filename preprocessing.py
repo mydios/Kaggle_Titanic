@@ -10,12 +10,27 @@ def preprocess_basic(df, mean_fare=None):
     drop = []
 
     #drop columns with majority missing values
-    drop.append('Cabin')
+    #drop.append('Cabin')
 
     #drop irrelevant columns
     drop.append('Name')
     drop.append('Ticket')
     drop.append('PassengerId')
+
+    #Fix missing Cabin values by grouping them all in an extra class
+    #Group them by sections (A, B, C, D, E, F...)
+    def fix_cabin(c):
+        try:
+            if math.isnan(c):
+                return 'M'
+        except:
+            pass
+        if 'T' in c:
+            return 'A'
+        else:
+            return c[0]
+        
+    df['Cabin'] = df['Cabin'].apply(fix_cabin)
 
     #Fix missing Fare value by imputing mean fare of known rows
     if (mean_fare is None):
@@ -35,6 +50,8 @@ def preprocess_basic(df, mean_fare=None):
             return e
     df['Embarked'] = df['Embarked'].apply(fix_embarked)
 
+    #Creatue feature about married women
+    df['Is_married'] = df['Name'].apply(lambda s: ('Mrs.' in s))
 
     #Create feature about title
     df['Title'] = df['Name']
@@ -56,7 +73,20 @@ def preprocess_basic(df, mean_fare=None):
     df['Title'] = df['Title'].apply(title_mapper)
 
     #Create feature about family size
-    df['Family'] = df['Parch'] + df['SibSp']
+    df['Family'] = df['Parch'] + df['SibSp'] + 1
+
+    
+    #Create features about fare cost
+    df['Fare_low1'] = df['Fare']<7
+    df['Fare_low2'] = df['Fare']<7.5
+    df['Fare_low3'] = df['Fare']<13
+    df['Fare_low4'] = df['Fare']<25
+    df['Fare_low5'] = df['Fare']<30
+    df['Fare_low6'] = df['Fare']<50
+    df['Fare_low7'] = df['Fare']<75
+
+    #Create feature about average cost per ticket of a family
+    df['Estimated_cost_per_ticket'] = df['Fare']/(df['Family'])
 
 
     #make categorical columns one-hot
@@ -67,7 +97,8 @@ def preprocess_basic(df, mean_fare=None):
     drop.append('Pclass')
     df = df.join(pd.get_dummies(df.Title, prefix='Title'))
     drop.append('Title')
-
+    df = df.join(pd.get_dummies(df.Cabin, prefix='Cabin'))
+    drop.append('Cabin')
 
     df = df.drop(columns=drop)
 
@@ -77,6 +108,7 @@ def preprocess_basic(df, mean_fare=None):
 def preprocess(df, mean_fare=None):
     df, mean_fare = preprocess_basic(df, mean_fare)
 
+    """
     #Fix missing ages by predicting it from other rows
     age_predictor = load('age_predictor.joblib')
 
@@ -87,6 +119,21 @@ def preprocess(df, mean_fare=None):
             except:
                 row = df.drop(columns=['Age']).iloc[i].to_numpy()
             age = np.sum(age_predictor.predict([row]))
+            df.loc[i, 'Age'] = age 
+    """
+    #impute age by taking the median age of the corresponding price class
+    m1 = df.groupby(['Pclass_1']).median()['Age'][1]
+    m2 = df.groupby(['Pclass_2']).median()['Age'][1]
+    m3 = df.groupby(['Pclass_3']).median()['Age'][1]
+    for i in range(len(df)):
+        if math.isnan(df['Age'].iloc[i]):
+            age = None
+            if df['Pclass_1'].iloc[i] == 1:
+                age = m1
+            elif df['Pclass_2'].iloc[i] == 1:
+                age = m2
+            else:
+                age = m3
             df.loc[i, 'Age'] = age
 
     return df, mean_fare

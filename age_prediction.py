@@ -1,6 +1,5 @@
 import pandas as pd 
 import numpy as np
-import math
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import RandomizedSearchCV
@@ -34,13 +33,13 @@ Y_test = Y[600::]
 predictor = RandomForestRegressor(criterion='mae')
 
 # Number of trees in random forest
-n_estimators = [int(x) for x in np.linspace(start=350, stop=800, num=10)]
+n_estimators = [400]
 # Maximum number of levels in tree
-max_depth = [int(x) for x in range(5, len(X[0]))]
+max_depth = [int(x) for x in range(2, 10)]
 # Minimum number of samples required to split a node
-min_samples_split = [0.001 + i*0.001 for i in range(30)]
+min_samples_split = [0.001 + i*0.0002 for i in range(20)]
 # Minimum number of samples required at each leaf node
-min_samples_leaf = min_samples_split
+min_samples_leaf = [0.001 + i*0.0002 for i in range(20)]
 # Method of selecting samples for training each tree
 bootstrap = [True]
 
@@ -52,7 +51,7 @@ random_grid = {'n_estimators': n_estimators,
                 'bootstrap': bootstrap}
 
 rf_random = RandomizedSearchCV(estimator=predictor, param_distributions=random_grid,
-                                n_iter=50, cv=2, verbose=1, random_state=42, n_jobs=-1, refit=True, scoring='neg_mean_absolute_error')
+                                n_iter=25, cv=5, verbose=1, random_state=42, n_jobs=-1, refit=True, scoring='neg_mean_absolute_error')
 
 rf_random.fit(X_train, Y_train)
 
